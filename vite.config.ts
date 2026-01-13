@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  // Für GitHub Pages: Repository-Name als Base-URL
+  base: '/GrundschulTerminplaner/',
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
