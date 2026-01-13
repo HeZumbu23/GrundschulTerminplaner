@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grundschul-Terminplaner</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Navigation -->
+    <nav class="navbar">
+      <h1 class="logo">Terminplaner</h1>
+      <ul class="nav-links">
+        <li><a href="#" data-page="dashboard" class="active">Dashboard</a></li>
+        <li><a href="#" data-page="create">Neues Projekt</a></li>
+      </ul>
+    </nav>
+
+    <!-- Hauptinhalt -->
+    <main class="main-content">
+      <!-- Dashboard -->
+      <section id="page-dashboard" class="page active">
+        <h2>Meine Projekte</h2>
+        <div id="projects-list" class="projects-grid">
+          <!-- Projekte werden hier dynamisch eingefügt -->
+        </div>
+        <p id="no-projects" class="empty-message" style="display: none;">
+          Noch keine Projekte vorhanden.
+          <a href="#" data-page="create">Erstellen Sie Ihr erstes Projekt</a>
+        </p>
+      </section>
+
+      <!-- Projekt erstellen -->
+      <section id="page-create" class="page">
+        <h2>Neues Projekt erstellen</h2>
+        <form id="create-project-form" class="form-card">
+          <div class="form-group">
+            <label for="project-title">Titel *</label>
+            <input type="text" id="project-title" placeholder="z.B. Lernentwicklungsgespräch 2. Klasse" required>
+          </div>
+
+          <div class="form-group">
+            <label for="teacher-name">Name der Lehrkraft</label>
+            <input type="text" id="teacher-name" placeholder="z.B. Frau Müller">
+          </div>
+
+          <div class="form-group">
+            <label for="deadline">Rückgabedatum</label>
+            <input type="date" id="deadline">
+          </div>
+
+          <hr>
+
+          <h3>Terminoptionen hinzufügen</h3>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="slot-date">Datum</label>
+              <input type="date" id="slot-date">
+            </div>
+            <div class="form-group">
+              <label for="slot-start">Von</label>
+              <input type="time" id="slot-start" value="12:30">
+            </div>
+            <div class="form-group">
+              <label for="slot-end">Bis</label>
+              <input type="time" id="slot-end" value="12:45">
+            </div>
+            <button type="button" id="add-slot-btn" class="btn btn-secondary">Hinzufügen</button>
+          </div>
+
+          <div class="form-group">
+            <label>Schnell-Generierung</label>
+            <div class="quick-generate">
+              <input type="number" id="slot-duration" value="15" min="5" max="60" style="width: 80px;">
+              <span>Minuten pro Termin</span>
+              <button type="button" id="generate-slots-btn" class="btn btn-secondary">Termine generieren</button>
+            </div>
+            <small>Generiert Termine von Start bis Ende im gewählten Intervall</small>
+          </div>
+
+          <div id="time-slots-container" class="time-slots-preview">
+            <h4>Hinzugefügte Termine:</h4>
+            <div id="time-slots-list"></div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-large">Projekt erstellen</button>
+        </form>
+      </section>
+
+      <!-- Projekt-Details -->
+      <section id="page-project" class="page">
+        <div class="project-header">
+          <h2 id="project-detail-title">Projektname</h2>
+          <div class="project-actions">
+            <button id="btn-print" class="btn btn-secondary">Druckansicht</button>
+            <button id="btn-manage-students" class="btn btn-secondary">Schüler verwalten</button>
+            <button id="btn-upload-scans" class="btn btn-secondary">Scans hochladen</button>
+            <button id="btn-assign" class="btn btn-primary">Termine zuweisen</button>
+          </div>
+        </div>
+
+        <div class="project-info">
+          <p><strong>Lehrkraft:</strong> <span id="project-detail-teacher">-</span></p>
+          <p><strong>Rückgabedatum:</strong> <span id="project-detail-deadline">-</span></p>
+          <p><strong>Anzahl Termine:</strong> <span id="project-detail-slots">-</span></p>
+          <p><strong>Anzahl Schüler:</strong> <span id="project-detail-students">-</span></p>
+        </div>
+
+        <div id="assignments-section" class="assignments-section" style="display: none;">
+          <h3>Terminzuweisungen</h3>
+          <div id="assignments-list"></div>
+          <div id="unassigned-list"></div>
+        </div>
+      </section>
+
+      <!-- Schüler verwalten -->
+      <section id="page-students" class="page">
+        <h2>Schüler verwalten</h2>
+        <button id="btn-back-to-project" class="btn btn-link">&larr; Zurück zum Projekt</button>
+
+        <div class="form-card">
+          <h3>Schüler hinzufügen</h3>
+          <div class="form-group">
+            <label for="student-names">Namen (einer pro Zeile)</label>
+            <textarea id="student-names" rows="5" placeholder="Max Mustermann&#10;Anna Schmidt&#10;..."></textarea>
+          </div>
+          <button id="add-students-btn" class="btn btn-primary">Schüler hinzufügen</button>
+        </div>
+
+        <div class="students-list-container">
+          <h3>Schülerliste</h3>
+          <table id="students-table" class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Ausgewählte Termine</th>
+                <th>Zugewiesener Termin</th>
+                <th>Aktionen</th>
+              </tr>
+            </thead>
+            <tbody id="students-tbody">
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Scans hochladen -->
+      <section id="page-scans" class="page">
+        <h2>Scans hochladen</h2>
+        <button id="btn-back-to-project-scans" class="btn btn-link">&larr; Zurück zum Projekt</button>
+
+        <div class="form-card">
+          <h3>Neuen Scan hochladen</h3>
+          <div class="form-group">
+            <label for="scan-student">Schüler auswählen</label>
+            <select id="scan-student">
+              <option value="">-- Schüler wählen --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="scan-file">Scan-Datei</label>
+            <input type="file" id="scan-file" accept="image/*">
+          </div>
+          <button id="upload-scan-btn" class="btn btn-primary">Hochladen</button>
+        </div>
+
+        <div class="scans-list-container">
+          <h3>Hochgeladene Scans</h3>
+          <div id="scans-list" class="scans-grid"></div>
+        </div>
+      </section>
+
+      <!-- Termine zuordnen (Modal-artig) -->
+      <section id="page-assign-slots" class="page">
+        <h2>Termine für Schüler auswählen</h2>
+        <button id="btn-back-to-scans" class="btn btn-link">&larr; Zurück</button>
+
+        <div class="assign-container">
+          <div class="scan-preview">
+            <h3>Scan von: <span id="assign-student-name"></span></h3>
+            <img id="assign-scan-image" src="" alt="Scan">
+          </div>
+
+          <div class="slots-selection">
+            <h3>Verfügbare Termine ankreuzen:</h3>
+            <div id="slots-checkboxes"></div>
+            <button id="save-slots-btn" class="btn btn-primary">Auswahl speichern</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Druckansicht -->
+      <section id="page-print" class="page print-page">
+        <div class="print-controls no-print">
+          <button id="btn-back-from-print" class="btn btn-link">&larr; Zurück</button>
+          <button id="btn-do-print" class="btn btn-primary">Drucken</button>
+        </div>
+        <div id="print-content" class="print-content">
+          <!-- Druckinhalt wird dynamisch generiert -->
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
