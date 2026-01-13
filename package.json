@@ -16,6 +16,6 @@
     "vite-plugin-pwa": "^0.17.4"
   },
   "dependencies": {
-    "idb": "^8.0.0"
+    "idb": "^8.0.3"
   }
 }

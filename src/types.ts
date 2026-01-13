@@ -14,18 +14,19 @@ export interface DaySlots {
 export interface Project {
   id: string;
   title: string;
-  teacherName: string;
   deadline: string;
+  appointmentDuration: number; // in Minuten
+  breakDuration: number; // Pause zwischen Terminen in Minuten
   timeSlots: DaySlots[];
   createdAt: string;
   status: 'active' | 'completed' | 'archived';
 }
 
-// Ein Schüler
+// Ein Bogen (anonyme Nummer)
 export interface Student {
   id: string;
   projectId: string;
-  name: string;
+  formNumber: string; // Zufällige Nummer des Bogens
   selectedSlots: string[];  // Array von slotIds: "2026-02-02_12:30_12:45"
   assignedSlot: string | null;
   scanData?: string;  // Base64 Bild des Scans
@@ -35,7 +36,7 @@ export interface Student {
 // Ergebnis der automatischen Zuweisung
 export interface Assignment {
   studentId: string;
-  studentName: string;
+  formNumber: string;
   slotId: string;
   date: string;
   start: string;
@@ -44,7 +45,7 @@ export interface Assignment {
 
 export interface UnassignedStudent {
   studentId: string;
-  studentName: string;
+  formNumber: string;
   reason: string;
 }
 

@@ -21,7 +21,7 @@ interface TerminplanerDB extends DBSchema {
 }
 
 const DB_NAME = 'terminplaner-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbInstance: IDBPDatabase<TerminplanerDB> | null = null;
 
@@ -30,7 +30,7 @@ async function getDb(): Promise<IDBPDatabase<TerminplanerDB>> {
   if (dbInstance) return dbInstance;
 
   dbInstance = await openDB<TerminplanerDB>(DB_NAME, DB_VERSION, {
-    upgrade(db) {
+    upgrade(db, oldVersion, _newVersion, transaction) {
       // Projects Store
       if (!db.objectStoreNames.contains('projects')) {
         const projectStore = db.createObjectStore('projects', { keyPath: 'id' });
@@ -48,6 +48,79 @@ async function getDb(): Promise<IDBPDatabase<TerminplanerDB>> {
         const assignmentStore = db.createObjectStore('assignments', { keyPath: 'id' });
         assignmentStore.createIndex('by-project', 'projectId');
       }
+
+      // Migration von Version 1 zu 2
+      if (oldVersion < 2) {
+        const projectStore = transaction.objectStore('projects');
+        const studentStore = transaction.objectStore('students');
+        const assignmentStore = transaction.objectStore('assignments');
+
+        // Migriere Projekte: Entferne teacherName, füge appointmentDuration und breakDuration hinzu
+        projectStore.openCursor().then(function migrate(cursor) {
+          if (!cursor) return;
+          const project = cursor.value as any;
+
+          // Entferne alte Felder
+          delete project.teacherName;
+
+          // Füge neue Felder hinzu falls nicht vorhanden
+          if (!project.appointmentDuration) {
+            project.appointmentDuration = 15;
+          }
+          if (!project.breakDuration) {
+            project.breakDuration = 0;
+          }
+
+          cursor.update(project);
+          cursor.continue().then(migrate);
+        });
+
+        // Migriere Students: Konvertiere name zu formNumber
+        studentStore.openCursor().then(function migrate(cursor) {
+          if (!cursor) return;
+          const student = cursor.value as any;
+
+          // Wenn alter Name existiert, konvertiere zu Nummer
+          if (student.name && !student.formNumber) {
+            student.formNumber = Math.floor(100000 + Math.random() * 900000).toString();
+            delete student.name;
+          }
+
+          cursor.update(student);
+          cursor.continue().then(migrate);
+        });
+
+        // Migriere Assignments: Konvertiere studentName zu formNumber
+        assignmentStore.openCursor().then(function migrate(cursor) {
+          if (!cursor) return;
+          const result = cursor.value as any;
+
+          // Migriere assignments Array
+          if (result.assignments) {
+            result.assignments = result.assignments.map((a: any) => {
+              if (a.studentName && !a.formNumber) {
+                a.formNumber = Math.floor(100000 + Math.random() * 900000).toString();
+                delete a.studentName;
+              }
+              return a;
+            });
+          }
+
+          // Migriere unassigned Array
+          if (result.unassigned) {
+            result.unassigned = result.unassigned.map((u: any) => {
+              if (u.studentName && !u.formNumber) {
+                u.formNumber = Math.floor(100000 + Math.random() * 900000).toString();
+                delete u.studentName;
+              }
+              return u;
+            });
+          }
+
+          cursor.update(result);
+          cursor.continue().then(migrate);
+        });
+      }
     }
   });
 
@@ -59,7 +132,7 @@ async function getDb(): Promise<IDBPDatabase<TerminplanerDB>> {
 export async function getAllProjects(): Promise<Project[]> {
   const db = await getDb();
   const projects = await db.getAll('projects');
-  return projects.sort((a, b) =>
+  return projects.sort((a: Project, b: Project) =>
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 }

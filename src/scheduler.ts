@@ -49,7 +49,7 @@ export function calculateAssignments(
       if (slotInfo) {
         assignments.push({
           studentId: student.id,
-          studentName: student.name,
+          formNumber: student.formNumber,
           slotId: availableSlot,
           date: slotInfo.date,
           start: slotInfo.start,
@@ -59,7 +59,7 @@ export function calculateAssignments(
     } else {
       unassigned.push({
         studentId: student.id,
-        studentName: student.name,
+        formNumber: student.formNumber,
         reason: 'Alle gewählten Termine sind bereits vergeben'
       });
     }
@@ -69,7 +69,7 @@ export function calculateAssignments(
   for (const student of studentsWithoutSlots) {
     unassigned.push({
       studentId: student.id,
-      studentName: student.name,
+      formNumber: student.formNumber,
       reason: 'Keine Termine ausgewählt'
     });
   }

@@ -40,13 +40,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const start = (document.getElementById('slot-start') as HTMLInputElement).value;
     const end = (document.getElementById('slot-end') as HTMLInputElement).value;
     const duration = parseInt((document.getElementById('slot-duration') as HTMLInputElement).value) || 15;
+    const breakDuration = parseInt((document.getElementById('break-duration') as HTMLInputElement).value) || 0;
 
     if (!date || !start || !end) {
       alert('Bitte Datum, Start- und Endzeit angeben');
       return;
     }
 
-    app.generateSlots(date, start, end, duration);
+    app.generateSlots(date, start, end, duration, breakDuration);
   });
 
   const createForm = document.getElementById('create-project-form');
@@ -54,8 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
 
     const title = (document.getElementById('project-title') as HTMLInputElement).value.trim();
-    const teacherName = (document.getElementById('teacher-name') as HTMLInputElement).value.trim();
     const deadline = (document.getElementById('deadline') as HTMLInputElement).value;
+    const appointmentDuration = parseInt((document.getElementById('slot-duration') as HTMLInputElement).value) || 15;
+    const breakDuration = parseInt((document.getElementById('break-duration') as HTMLInputElement).value) || 0;
 
     if (!title) {
       alert('Bitte einen Titel eingeben');
@@ -63,14 +65,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      const project = await app.createProject(title, teacherName, deadline);
+      const project = await app.createProject(title, deadline, appointmentDuration, breakDuration);
       (createForm as HTMLFormElement).reset();
       alert('Projekt erfolgreich erstellt!');
       app.setCurrentProject(project);
       app.showPage('project');
       document.getElementById('project-detail-title')!.textContent = project.title;
-      document.getElementById('project-detail-teacher')!.textContent = project.teacherName || '-';
       document.getElementById('project-detail-deadline')!.textContent = project.deadline || '-';
+      document.getElementById('project-detail-duration')!.textContent = String(project.appointmentDuration || 15);
+      document.getElementById('project-detail-break')!.textContent = String(project.breakDuration || 0);
       document.getElementById('project-detail-slots')!.textContent = String(
         project.timeSlots.reduce((sum, day) => sum + day.times.length, 0)
       );
@@ -82,8 +85,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Project Detail Buttons
-  document.getElementById('btn-print')?.addEventListener('click', () => {
-    app.generatePrintDocument();
+  document.getElementById('btn-print')?.addEventListener('click', async () => {
+    await app.generatePrintDocument();
     app.showPage('print');
   });
 
@@ -102,9 +105,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('add-students-btn')?.addEventListener('click', async () => {
-    const textarea = document.getElementById('student-names') as HTMLTextAreaElement;
-    await app.addStudents(textarea.value);
-    textarea.value = '';
+    const input = document.getElementById('student-count') as HTMLInputElement;
+    const count = parseInt(input.value) || 25;
+    await app.addStudents(count);
+    input.value = '25';
   });
 
   // Slot Selection Page
