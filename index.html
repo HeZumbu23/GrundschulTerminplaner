@@ -44,11 +44,6 @@
           </div>
 
           <div class="form-group">
-            <label for="teacher-name">Lehrkraft</label>
-            <input type="text" id="teacher-name" placeholder="z.B. Frau Müller">
-          </div>
-
-          <div class="form-group">
             <label for="deadline">Rückgabedatum</label>
             <input type="date" id="deadline">
           </div>
@@ -56,6 +51,17 @@
           <hr>
 
           <h3>Terminoptionen</h3>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="slot-duration">Gesprächsdauer (Min) *</label>
+              <input type="number" id="slot-duration" value="15" min="5" max="60" required>
+            </div>
+            <div class="form-group">
+              <label for="break-duration">Pause danach (Min)</label>
+              <input type="number" id="break-duration" value="0" min="0" max="30">
+            </div>
+          </div>
 
           <div class="form-row">
             <div class="form-group">
@@ -72,10 +78,6 @@
             <div class="form-group">
               <label for="slot-end">Bis</label>
               <input type="time" id="slot-end" value="15:00">
-            </div>
-            <div class="form-group">
-              <label for="slot-duration">Dauer (Min)</label>
-              <input type="number" id="slot-duration" value="15" min="5" max="60">
             </div>
           </div>
 
@@ -100,14 +102,15 @@
         <div class="project-header">
           <h2 id="project-detail-title">Projektname</h2>
           <div class="project-info">
-            <p><strong>Lehrkraft:</strong> <span id="project-detail-teacher">-</span></p>
             <p><strong>Rückgabe bis:</strong> <span id="project-detail-deadline">-</span></p>
+            <p><strong>Gesprächsdauer:</strong> <span id="project-detail-duration">-</span> Min</p>
+            <p><strong>Pause:</strong> <span id="project-detail-break">-</span> Min</p>
             <p><strong>Termine:</strong> <span id="project-detail-slots">-</span></p>
-            <p><strong>Schüler:</strong> <span id="project-detail-students">-</span></p>
+            <p><strong>Bögen:</strong> <span id="project-detail-students">-</span></p>
           </div>
           <div class="project-actions">
             <button id="btn-print" class="btn btn-secondary">Drucken</button>
-            <button id="btn-manage-students" class="btn btn-secondary">Schüler</button>
+            <button id="btn-manage-students" class="btn btn-secondary">Bögen</button>
             <button id="btn-assign" class="btn btn-primary">Zuweisen</button>
           </div>
         </div>
@@ -119,25 +122,29 @@
         </div>
       </section>
 
-      <!-- Schüler verwalten -->
+      <!-- Bögen verwalten -->
       <section id="page-students" class="page">
-        <h2>Schüler verwalten</h2>
+        <h2>Bögen verwalten</h2>
         <button id="btn-back-to-project" class="btn btn-link">&larr; Zurück</button>
 
         <div class="form-card">
-          <h3>Schüler hinzufügen</h3>
+          <h3>Bögen erstellen</h3>
+          <p class="info-text">
+            <strong>Hinweis:</strong> Die Bögen werden mit anonymen Zufallsnummern erstellt.
+            Eltern können den Namen des Kindes auf der Rückseite des Bogens eintragen.
+          </p>
           <div class="form-group">
-            <label for="student-names">Namen (einer pro Zeile)</label>
-            <textarea id="student-names" rows="4" placeholder="Max Mustermann&#10;Anna Schmidt&#10;..."></textarea>
+            <label for="student-count">Anzahl der Bögen</label>
+            <input type="number" id="student-count" min="1" max="50" value="25" placeholder="z.B. 25">
           </div>
-          <button id="add-students-btn" class="btn btn-primary">Hinzufügen</button>
+          <button id="add-students-btn" class="btn btn-primary">Erstellen</button>
         </div>
 
-        <h3>Schülerliste</h3>
+        <h3>Bogenliste</h3>
         <table id="students-table" class="data-table">
           <thead>
             <tr>
-              <th>Name</th>
+              <th>Bogen-Nr.</th>
               <th>Auswahl</th>
               <th>Termin</th>
               <th>Aktionen</th>

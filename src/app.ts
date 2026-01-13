@@ -43,8 +43,7 @@ export async function loadProjects(): Promise<void> {
   container.innerHTML = projects.map(project => `
     <div class="project-card" data-project-id="${project.id}">
       <h3>${escapeHtml(project.title)}</h3>
-      <p>${escapeHtml(project.teacherName || 'Keine Lehrkraft angegeben')}</p>
-      <p>Termine: ${countSlots(project.timeSlots)}</p>
+      <p>Termine: ${countSlots(project.timeSlots)} | Dauer: ${project.appointmentDuration || 15} Min</p>
       <div class="project-meta">
         Erstellt: ${formatDate(project.createdAt)}
         ${project.deadline ? `<br>Rückgabe bis: ${formatDate(project.deadline)}` : ''}
@@ -88,10 +87,11 @@ async function openProject(projectId: string): Promise<void> {
   const students = await db.getStudentsByProject(projectId);
 
   document.getElementById('project-detail-title')!.textContent = project.title;
-  document.getElementById('project-detail-teacher')!.textContent = project.teacherName || '-';
   document.getElementById('project-detail-deadline')!.textContent = project.deadline
     ? formatDate(project.deadline)
     : '-';
+  document.getElementById('project-detail-duration')!.textContent = String(project.appointmentDuration || 15);
+  document.getElementById('project-detail-break')!.textContent = String(project.breakDuration || 0);
   document.getElementById('project-detail-slots')!.textContent = String(countSlots(project.timeSlots));
   document.getElementById('project-detail-students')!.textContent = String(students.length);
 
@@ -121,7 +121,7 @@ async function loadAssignments(): Promise<void> {
     <h4>Zugewiesene Termine (${stats.assignedStudents}/${stats.totalStudents}):</h4>
     ${result.assignments.map(a => `
       <div class="assignment-card assigned">
-        <span><strong>${escapeHtml(a.studentName)}</strong></span>
+        <span><strong>Bogen #${escapeHtml(a.formNumber)}</strong></span>
         <span>${formatDate(a.date)} | ${a.start} - ${a.end}</span>
       </div>
     `).join('')}
@@ -132,7 +132,7 @@ async function loadAssignments(): Promise<void> {
       <h4>Nicht zugewiesen (${result.unassigned.length}):</h4>
       ${result.unassigned.map(u => `
         <div class="assignment-card unassigned">
-          <span><strong>${escapeHtml(u.studentName)}</strong></span>
+          <span><strong>Bogen #${escapeHtml(u.formNumber)}</strong></span>
           <span>${escapeHtml(u.reason)}</span>
         </div>
       `).join('')}
@@ -212,28 +212,31 @@ function renderTimeSlots(): void {
   });
 }
 
-export function generateSlots(date: string, startTime: string, endTime: string, duration: number): void {
+export function generateSlots(date: string, startTime: string, endTime: string, duration: number, breakDuration: number = 0): void {
   let current = timeToMinutes(startTime);
   const endMinutes = timeToMinutes(endTime);
+  const totalDuration = duration + breakDuration;
 
   while (current + duration <= endMinutes) {
     const slotStart = minutesToTime(current);
     const slotEnd = minutesToTime(current + duration);
     addTimeSlot(date, slotStart, slotEnd);
-    current += duration;
+    current += totalDuration;
   }
 }
 
 export async function createProject(
   title: string,
-  teacherName: string,
-  deadline: string
+  deadline: string,
+  appointmentDuration: number,
+  breakDuration: number
 ): Promise<Project> {
   const project: Project = {
     id: db.generateId(),
     title,
-    teacherName,
     deadline,
+    appointmentDuration,
+    breakDuration,
     timeSlots: [...tempTimeSlots],
     createdAt: nowISO(),
     status: 'active'
@@ -260,13 +263,13 @@ export async function loadStudents(): Promise<void> {
   const tbody = document.getElementById('students-tbody')!;
 
   if (students.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4">Noch keine Schüler hinzugefügt</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4">Noch keine Bögen erstellt</td></tr>';
     return;
   }
 
   tbody.innerHTML = students.map(student => `
     <tr>
-      <td>${escapeHtml(student.name)}</td>
+      <td><strong>#${escapeHtml(student.formNumber)}</strong></td>
       <td>
         ${student.selectedSlots.length} Termine
         ${student.selectedSlots.length > 0
@@ -285,7 +288,7 @@ export async function loadStudents(): Promise<void> {
   tbody.querySelectorAll('.delete-student-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const id = (e.target as HTMLElement).dataset.id!;
-      if (confirm('Schüler wirklich löschen?')) {
+      if (confirm('Bogen wirklich löschen?')) {
         await db.deleteStudent(id);
         loadStudents();
       }
@@ -300,26 +303,42 @@ export async function loadStudents(): Promise<void> {
   });
 }
 
-export async function addStudents(namesText: string): Promise<void> {
+function generateFormNumber(): string {
+  // Generiert eine 6-stellige Zufallsnummer
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+export async function addStudents(count: number): Promise<void> {
   if (!currentProject) return;
 
-  const names = namesText.split('\n')
-    .map(n => n.trim())
-    .filter(n => n.length > 0);
-
-  if (names.length === 0) {
-    alert('Keine gültigen Namen gefunden');
+  if (count < 1 || count > 50) {
+    alert('Bitte eine Anzahl zwischen 1 und 50 eingeben');
     return;
   }
 
-  const students: Student[] = names.map(name => ({
-    id: db.generateId(),
-    projectId: currentProject!.id,
-    name,
-    selectedSlots: [],
-    assignedSlot: null,
-    createdAt: nowISO()
-  }));
+  // Sammle alle existierenden Nummern um Duplikate zu vermeiden
+  const existingStudents = await db.getStudentsByProject(currentProject.id);
+  const existingNumbers = new Set(existingStudents.map(s => s.formNumber));
+
+  const students: Student[] = [];
+  for (let i = 0; i < count; i++) {
+    let formNumber: string;
+    // Stelle sicher, dass die Nummer einzigartig ist
+    do {
+      formNumber = generateFormNumber();
+    } while (existingNumbers.has(formNumber));
+
+    existingNumbers.add(formNumber);
+
+    students.push({
+      id: db.generateId(),
+      projectId: currentProject.id,
+      formNumber,
+      selectedSlots: [],
+      assignedSlot: null,
+      createdAt: nowISO()
+    });
+  }
 
   await db.saveStudents(students);
   loadStudents();
@@ -334,7 +353,7 @@ async function openSlotSelection(studentId: string): Promise<void> {
   currentStudent = student;
 
   document.getElementById('slot-selection-title')!.textContent =
-    `Termine für ${student.name} auswählen`;
+    `Termine für Bogen #${student.formNumber} auswählen`;
 
   renderSlotCheckboxes(student.selectedSlots);
 
@@ -472,13 +491,13 @@ export async function runAssignment(): Promise<void> {
   const students = await db.getStudentsByProject(currentProject.id);
 
   if (students.length === 0) {
-    alert('Keine Schüler vorhanden');
+    alert('Keine Bögen vorhanden');
     return;
   }
 
   const studentsWithSlots = students.filter(s => s.selectedSlots.length > 0);
   if (studentsWithSlots.length === 0) {
-    alert('Noch keine Termine für Schüler ausgewählt. Bitte zuerst die Terminauswahl für die Schüler vornehmen.');
+    alert('Noch keine Termine ausgewählt. Bitte zuerst die Terminauswahl für die Bögen vornehmen.');
     return;
   }
 
@@ -505,7 +524,7 @@ export async function runAssignment(): Promise<void> {
   const stats = getScheduleStats(currentProject, result);
 
   alert(`Zuweisung abgeschlossen!\n\n` +
-    `Gesamt: ${stats.totalStudents} Schüler\n` +
+    `Gesamt: ${stats.totalStudents} Bögen\n` +
     `Zugewiesen: ${stats.assignedStudents}\n` +
     `Nicht zugewiesen: ${stats.unassignedStudents}`);
 
@@ -514,22 +533,26 @@ export async function runAssignment(): Promise<void> {
 
 // ==================== Print ====================
 
-export function generatePrintDocument(): void {
+export async function generatePrintDocument(): Promise<void> {
   if (!currentProject) return;
 
+  const project = currentProject;
+  const students = await db.getStudentsByProject(project.id);
   const container = document.getElementById('print-content')!;
 
-  container.innerHTML = `
+  // Generiere für jeden Bogen ein separates Dokument
+  container.innerHTML = students.map(student => `
     <div class="print-document">
-      <h1>${escapeHtml(currentProject.title)}</h1>
+      <div class="form-number-header">
+        <h1>Bogen #${escapeHtml(student.formNumber)}</h1>
+      </div>
+
+      <h2>${escapeHtml(project.title)}</h2>
 
       <div class="header-info">
-        <div class="name-field">
-          <strong>Name des Kindes:</strong> ________________________________
-        </div>
         <div class="deadline-field">
-          ${currentProject.deadline
-            ? `Bitte ausfüllen und<br>bis spätestens ${formatDate(currentProject.deadline)}<br>zurückgeben.`
+          ${project.deadline
+            ? `Bitte ausfüllen und bis spätestens ${formatDate(project.deadline)} zurückgeben.`
             : ''}
         </div>
       </div>
@@ -541,13 +564,13 @@ export function generatePrintDocument(): void {
       <table class="slots-table">
         <thead>
           <tr>
-            ${currentProject.timeSlots.map(day => `
+            ${project.timeSlots.map(day => `
               <th colspan="2">${getDayName(day.date)}<br>${formatDate(day.date)}</th>
             `).join('')}
           </tr>
         </thead>
         <tbody>
-          ${generateTableRows(currentProject.timeSlots)}
+          ${generateTableRows(project.timeSlots)}
         </tbody>
       </table>
 
@@ -561,8 +584,12 @@ export function generatePrintDocument(): void {
           <small>Unterschrift</small>
         </div>
       </div>
+
+      <div class="backside-note">
+        <strong>Hinweis:</strong> Bitte tragen Sie auf der Rückseite dieses Bogens den Namen Ihres Kindes ein.
+      </div>
     </div>
-  `;
+  `).join('<div class="page-break"></div>');
 }
 
 function generateTableRows(slotsByDay: DaySlots[]): string {
